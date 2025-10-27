@@ -6,7 +6,7 @@ class FinancialAdvisor:
         self.client = None
         
         # Only initialize if API key is valid
-        if self.api_key and self.api_key != 'your-openai-api-key-here' and len(self.api_key) > 20:
+        if self.api_key and self.api_key.startswith('sk-') and len(self.api_key) > 40:
             try:
                 from openai import OpenAI
                 self.client = OpenAI(api_key=self.api_key)

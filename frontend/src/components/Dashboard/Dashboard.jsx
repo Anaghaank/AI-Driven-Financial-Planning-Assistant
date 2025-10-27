@@ -4,6 +4,7 @@ import { transactionService } from '../../services/transactionService';
 import aiService from '../../services/aiService';
 import { authService } from '../../services/authService';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import BankManagement from './BankManagement';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
@@ -151,8 +152,9 @@ export default function Dashboard() {
       return <TransactionsView transactions={transactions} onRefresh={loadData} />;
     } else if (activeView === 'goals') {
       return <GoalsView onRefresh={loadData} />;
+    } else if (activeView === 'banks') {
+      return <BankManagement onRefresh={loadData} />;
     }
-
     return (
       <>
         <div className="dashboard-header">
@@ -324,6 +326,12 @@ export default function Dashboard() {
             onClick={() => setActiveView('goals')}
           >
             Goals
+          </li>
+          <li
+            className={`nav-item ${activeView === 'banks' ? 'active' : ''}`}
+            onClick={() => setActiveView('banks')}
+          >
+            Banks
           </li>
         </ul>
 
