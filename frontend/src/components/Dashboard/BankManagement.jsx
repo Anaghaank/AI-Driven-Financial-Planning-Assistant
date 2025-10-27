@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import bankService from '../../services/bankService';
+import { formatCurrency } from '../../utils/formatters';
 
 export default function BankManagement({ onRefresh }) {
   const [banks, setBanks] = useState([]);
@@ -117,7 +118,7 @@ export default function BankManagement({ onRefresh }) {
               <div>Account: {bank.account_number}</div>
               <div>Type: {bank.account_type}</div>
               <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#667eea', marginTop: '12px' }}>
-                ${bank.balance?.toFixed(2) || '0.00'}
+                {formatCurrency(bank.balance || 0)}
               </div>
             </div>
           </div>

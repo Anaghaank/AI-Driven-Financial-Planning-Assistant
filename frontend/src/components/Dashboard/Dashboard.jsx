@@ -5,6 +5,7 @@ import aiService from '../../services/aiService';
 import { authService } from '../../services/authService';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import BankManagement from './BankManagement';
+import { formatCurrency } from '../../utils/formatters';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
@@ -168,7 +169,7 @@ export default function Dashboard() {
         <div className="stats-grid">
           <div className="stat-card">
             <h3>Total Balance</h3>
-            <div className="stat-value">${stats.balance.toFixed(2)}</div>
+            <div className="stat-value">{formatCurrency(stats.balance)}</div>
             <div className={`stat-change ${stats.balance >= 0 ? 'positive' : 'negative'}`}>
               {stats.balance >= 0 ? '↑ Positive' : '↓ Negative'}
             </div>
@@ -176,13 +177,13 @@ export default function Dashboard() {
 
           <div className="stat-card">
             <h3>Total Income</h3>
-            <div className="stat-value">${stats.income.toFixed(2)}</div>
+            <div className="stat-value">{formatCurrency(stats.income)}</div>
             <div style={{ fontSize: '14px', color: '#888', marginTop: '8px' }}>This month</div>
           </div>
 
           <div className="stat-card">
             <h3>Total Expense</h3>
-            <div className="stat-value">${stats.expense.toFixed(2)}</div>
+            <div className="stat-value">{formatCurrency(stats.expense)}</div>
             <div style={{ fontSize: '14px', color: '#888', marginTop: '8px' }}>This month</div>
           </div>
         </div>
@@ -240,7 +241,7 @@ export default function Dashboard() {
                     <div style={{ fontSize: '14px', color: '#888' }}>{txn.category}</div>
                   </div>
                   <div className={`transaction-amount ${txn.type}`}>
-                    {txn.type === 'income' ? '+' : '-'}${txn.amount.toFixed(2)}
+                    {txn.type === 'income' ? '+' : '-'}{formatCurrency(txn.amount)}
                   </div>
                 </div>
               ))}
@@ -264,7 +265,7 @@ export default function Dashboard() {
               <div className="prediction-box">
                 <h3 style={{ marginBottom: '8px' }}>Next Month Prediction</h3>
                 <div className="prediction-value">
-                  ${predictions.next_month_prediction?.toFixed(2) || '0.00'}
+                  {formatCurrency(predictions.next_month_prediction)}
                 </div>
                 <p style={{ fontSize: '14px', color: '#666' }}>
                   Based on {predictions.based_on_days || 0} days of data
@@ -470,7 +471,7 @@ function TransactionsView({ transactions, onRefresh }) {
                     fontWeight: 'bold',
                     color: txn.type === 'income' ? '#4caf50' : '#f44336'
                   }}>
-                    {txn.type === 'income' ? '+' : '-'}${txn.amount.toFixed(2)}
+                    {txn.type === 'income' ? '+' : '-'}{formatCurrency(txn.amount)}
                   </td>
                 </tr>
               ))}
@@ -576,10 +577,10 @@ function GoalsView({ onRefresh }) {
             <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#667eea' }}>
-                  ${goal.current_amount?.toFixed(2) || '0.00'}
+                  {formatCurrency(goal.current_amount || 0)}
                 </span>
                 <span style={{ fontSize: '14px', color: '#888' }}>
-                  of ${goal.target_amount?.toFixed(2)}
+                  of {formatCurrency(goal.target_amount)}
                 </span>
               </div>
 
@@ -591,7 +592,7 @@ function GoalsView({ onRefresh }) {
                 overflow: 'hidden'
               }}>
                 <div style={{
-                  width: `${Math.min((goal.current_amount / goal.target_amount) * 100, 100)}%`,
+                  width: `₹{Math.min((goal.current_amount / goal.target_amount) * 100, 100)}%`,
                   height: '100%',
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   transition: 'width 0.3s'
