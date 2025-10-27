@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { transactionService } from '../../services/transactionService';
-import { aiService } from '../../services/aiService';
+import aiService from '../../services/aiService';
 import { authService } from '../../services/authService';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -28,10 +28,10 @@ export default function Dashboard() {
     try {
       const txns = await transactionService.getAll();
       setTransactions(txns);
-      
+
       const totalIncome = txns.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
       const totalExpense = txns.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-      
+
       setStats({
         income: totalIncome,
         expense: totalExpense,
@@ -43,7 +43,7 @@ export default function Dashboard() {
       txns.filter(t => t.type === 'expense').forEach(t => {
         categories[t.category] = (categories[t.category] || 0) + t.amount;
       });
-      
+
       const categoryArray = Object.entries(categories).map(([name, value]) => ({
         name,
         value: parseFloat(value.toFixed(2))
@@ -64,24 +64,32 @@ export default function Dashboard() {
           months[monthKey].expense += t.amount;
         }
       });
-      
+
       const monthlyArray = Object.values(months).slice(-6);
       setMonthlyData(monthlyArray);
 
       // Load AI data
+      // Load AI data - Always call, backend handles errors gracefully
       try {
         const pred = await aiService.getPredictions();
+        console.log('Predictions received:', pred);
         setPredictions(pred);
       } catch (error) {
-        console.log('AI predictions not available:', error);
+        console.error('Predictions error:', error);
+        setPredictions({
+          next_month_prediction: 0,
+          based_on_days: 0,
+          message: 'Add more transactions for predictions'
+        });
       }
 
       try {
         const ins = await aiService.getInsights();
-        setInsights(ins.insights);
+        console.log('Insights received:', ins);
+        setInsights(ins.insights || 'Add transactions to see insights!');
       } catch (error) {
-        console.log('AI insights not available:', error);
-        setInsights('Add more transactions to get AI-powered insights!');
+        console.error('Insights error:', error);
+        setInsights('Add transactions to see your spending analysis!');
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -115,14 +123,26 @@ export default function Dashboard() {
 
   const handleAskAI = async (e) => {
     e.preventDefault();
-    if (!aiQuery.trim()) return;
-    
+    if (!aiQuery.trim()) {
+      setAiResponse('Please enter a question!');
+      return;
+    }
+
+    setAiResponse('Getting advice...');
+
     try {
+      console.log('Sending AI query:', aiQuery);
       const response = await aiService.getAdvice(aiQuery);
-      setAiResponse(response.advice);
+      console.log('AI response received:', response);
+
+      if (response && response.advice) {
+        setAiResponse(response.advice);
+      } else {
+        setAiResponse('No response received. Please try again.');
+      }
     } catch (error) {
-      console.error('Error getting AI advice:', error);
-      setAiResponse('Unable to get AI advice at the moment. Please try again later.');
+      console.error('AI advice error:', error);
+      setAiResponse(`Error: ${error.message}. Please check if the backend is running.`);
     }
   };
 
@@ -287,19 +307,19 @@ export default function Dashboard() {
         </div>
 
         <ul className="sidebar-nav">
-          <li 
+          <li
             className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveView('dashboard')}
           >
             Dashboard
           </li>
-          <li 
+          <li
             className={`nav-item ${activeView === 'transactions' ? 'active' : ''}`}
             onClick={() => setActiveView('transactions')}
           >
             Transactions
           </li>
-          <li 
+          <li
             className={`nav-item ${activeView === 'goals' ? 'active' : ''}`}
             onClick={() => setActiveView('goals')}
           >
@@ -384,20 +404,20 @@ function TransactionsView({ transactions, onRefresh }) {
       <div className="dashboard-header">
         <h1>Transactions</h1>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button 
-            className={filter === 'all' ? 'btn-add' : 'btn-secondary'} 
+          <button
+            className={filter === 'all' ? 'btn-add' : 'btn-secondary'}
             onClick={() => setFilter('all')}
           >
             All
           </button>
-          <button 
-            className={filter === 'income' ? 'btn-add' : 'btn-secondary'} 
+          <button
+            className={filter === 'income' ? 'btn-add' : 'btn-secondary'}
             onClick={() => setFilter('income')}
           >
             Income
           </button>
-          <button 
-            className={filter === 'expense' ? 'btn-add' : 'btn-secondary'} 
+          <button
+            className={filter === 'expense' ? 'btn-add' : 'btn-secondary'}
             onClick={() => setFilter('expense')}
           >
             Expense
@@ -436,8 +456,8 @@ function TransactionsView({ transactions, onRefresh }) {
                       {txn.type}
                     </span>
                   </td>
-                  <td style={{ 
-                    padding: '12px', 
+                  <td style={{
+                    padding: '12px',
                     textAlign: 'right',
                     fontWeight: 'bold',
                     color: txn.type === 'income' ? '#4caf50' : '#f44336'
@@ -501,7 +521,7 @@ function GoalsView({ onRefresh }) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const amount = parseFloat(formData.get('amount'));
-    
+
     const goal = goals.find(g => g._id === goalId);
     const newAmount = goal.current_amount + amount;
 
@@ -529,7 +549,7 @@ function GoalsView({ onRefresh }) {
           <div key={goal._id} className="goal-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
               <h3>{goal.name}</h3>
-              <button 
+              <button
                 onClick={() => setShowAddProgress(goal._id)}
                 style={{
                   padding: '6px 12px',
@@ -544,7 +564,7 @@ function GoalsView({ onRefresh }) {
                 + Add
               </button>
             </div>
-            
+
             <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#667eea' }}>
@@ -554,7 +574,7 @@ function GoalsView({ onRefresh }) {
                   of ${goal.target_amount?.toFixed(2)}
                 </span>
               </div>
-              
+
               <div style={{
                 width: '100%',
                 height: '12px',
@@ -569,7 +589,7 @@ function GoalsView({ onRefresh }) {
                   transition: 'width 0.3s'
                 }}></div>
               </div>
-              
+
               <div style={{ textAlign: 'right', marginTop: '4px', fontSize: '14px', color: '#888' }}>
                 {((goal.current_amount / goal.target_amount) * 100).toFixed(1)}% Complete
               </div>
@@ -588,11 +608,11 @@ function GoalsView({ onRefresh }) {
                   <form onSubmit={(e) => handleAddProgress(e, goal._id)}>
                     <div className="form-group">
                       <label>Amount to Add</label>
-                      <input 
-                        type="number" 
-                        name="amount" 
-                        step="0.01" 
-                        required 
+                      <input
+                        type="number"
+                        name="amount"
+                        step="0.01"
+                        required
                         placeholder="Enter amount"
                       />
                     </div>
@@ -629,20 +649,20 @@ function GoalsView({ onRefresh }) {
             <form onSubmit={handleAddGoal}>
               <div className="form-group">
                 <label>Goal Name</label>
-                <input 
-                  type="text" 
-                  name="name" 
-                  required 
+                <input
+                  type="text"
+                  name="name"
+                  required
                   placeholder="e.g., Emergency Fund, Vacation"
                 />
               </div>
               <div className="form-group">
                 <label>Target Amount</label>
-                <input 
-                  type="number" 
-                  name="target_amount" 
-                  step="0.01" 
-                  required 
+                <input
+                  type="number"
+                  name="target_amount"
+                  step="0.01"
+                  required
                   placeholder="10000"
                 />
               </div>
