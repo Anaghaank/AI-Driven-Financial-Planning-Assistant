@@ -16,8 +16,11 @@ def create_app():
     init_db(app)
     
     # Register blueprints
-    from .routes import auth_routes, transaction_routes, ai_routes, budget_routes, goal_routes, bank_routes
+    from .routes import auth_routes, transaction_routes, ai_routes, budget_routes, goal_routes, bank_routes, analytics_routes
+    from .routes import export_routes
     
+    app.register_blueprint(export_routes.bp, url_prefix='/api/export')
+    app.register_blueprint(analytics_routes.bp, url_prefix='/api/analytics')
     app.register_blueprint(auth_routes.bp, url_prefix='/api/auth')
     app.register_blueprint(transaction_routes.bp, url_prefix='/api/transactions')
     app.register_blueprint(ai_routes.bp, url_prefix='/api/ai')

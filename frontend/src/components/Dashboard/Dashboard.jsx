@@ -6,6 +6,7 @@ import { authService } from '../../services/authService';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import BankManagement from './BankManagement';
 import { formatCurrency } from '../../utils/formatters';
+import AdvancedAnalytics from './AdvancedAnalytics';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
@@ -155,6 +156,8 @@ export default function Dashboard() {
       return <GoalsView onRefresh={loadData} />;
     } else if (activeView === 'banks') {
       return <BankManagement onRefresh={loadData} />;
+    } else if (activeView === 'analytics') {
+      return <AdvancedAnalytics />;
     }
     return (
       <>
@@ -334,6 +337,12 @@ export default function Dashboard() {
           >
             Banks
           </li>
+          <li
+            className={`nav-item ${activeView === 'analytics' ? 'active' : ''}`}
+            onClick={() => setActiveView('analytics')}
+          >
+            📊 Analytics
+          </li>
         </ul>
 
         <button onClick={handleLogout} className="logout-btn">
@@ -408,6 +417,25 @@ function TransactionsView({ transactions, onRefresh }) {
     return t.type === filter;
   });
 
+  const handleExport = async (format) => {
+    try {
+      const response = await api.get(`/export/transactions/${format}`, {
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `transactions_${new Date().toISOString().split('T')[0]}.${format}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
   return (
     <div>
       <div className="dashboard-header">
@@ -430,6 +458,18 @@ function TransactionsView({ transactions, onRefresh }) {
             onClick={() => setFilter('expense')}
           >
             Expense
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() => handleExport('csv')}
+          >
+            📄 Export CSV
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() => handleExport('excel')}
+          >
+            📊 Export Excel
           </button>
         </div>
       </div>
