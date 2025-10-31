@@ -160,3 +160,90 @@ def get_financial_health_score():
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@bp.route('/savings-suggestions', methods=['GET'])
+@jwt_required()
+def get_savings_suggestions():
+    try:
+        current_user = get_jwt_identity()
+        transactions = Transaction.find_by_user(current_user, limit=500)
+        
+        # Analyze spending patterns
+        total_income = sum(t['amount'] for t in transactions if t['type'] == 'income')
+        total_expense = sum(t['amount'] for t in transactions if t['type'] == 'expense')
+        
+        # Category spending
+        category_spending = {}
+        for t in transactions:
+            if t['type'] == 'expense':
+                cat = t.get('category', 'Other')
+                category_spending[cat] = category_spending.get(cat, 0) + t['amount']
+        
+        suggestions = []
+        
+        # Analyze each category
+        for category, amount in sorted(category_spending.items(), key=lambda x: x[1], reverse=True):
+            percentage = (amount / total_expense * 100) if total_expense > 0 else 0
+            
+            if category == 'Food & Groceries' and percentage > 25:
+                suggestions.append({
+                    'category': category,
+                    'current_spend': amount,
+                    'potential_saving': amount * 0.2,  # 20% reduction
+                    'tip': 'Cook at home more often, buy in bulk, use grocery apps for discounts',
+                    'priority': 'high'
+                })
+            
+            elif category == 'Transportation' and percentage > 15:
+                suggestions.append({
+                    'category': category,
+                    'current_spend': amount,
+                    'potential_saving': amount * 0.15,
+                    'tip': 'Use public transport, carpool, consider monthly passes',
+                    'priority': 'medium'
+                })
+            
+            elif category == 'Shopping' and percentage > 15:
+                suggestions.append({
+                    'category': category,
+                    'current_spend': amount,
+                    'potential_saving': amount * 0.3,
+                    'tip': 'Wait 24 hours before impulse purchases, use cashback apps, compare prices',
+                    'priority': 'high'
+                })
+            
+            elif category == 'Entertainment' and percentage > 10:
+                suggestions.append({
+                    'category': category,
+                    'current_spend': amount,
+                    'potential_saving': amount * 0.25,
+                    'tip': 'Share subscriptions, look for free alternatives, limit dining out',
+                    'priority': 'medium'
+                })
+        
+        # Calculate total potential savings
+        total_potential = sum(s['potential_saving'] for s in suggestions)
+        
+        return jsonify({
+            'suggestions': suggestions,
+            'total_potential_savings': total_potential,
+            'annual_potential': total_potential * 12
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@bp.route('/alerts', methods=['GET'])
+@jwt_required()
+def get_alerts():
+    try:
+        current_user = get_jwt_identity()
+        transactions = Transaction.find_by_user(current_user, limit=500)
+        
+        from app.ml_models.alert_system import AlertSystem
+        alert_system = AlertSystem()
+        alerts = alert_system.analyze_transactions(transactions)
+        
+        return jsonify(alerts), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

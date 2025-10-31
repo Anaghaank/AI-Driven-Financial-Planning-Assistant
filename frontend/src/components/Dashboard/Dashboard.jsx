@@ -7,6 +7,8 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import BankManagement from './BankManagement';
 import { formatCurrency } from '../../utils/formatters';
 import AdvancedAnalytics from './AdvancedAnalytics';
+import api from '../../api';
+import SavingsWidget from './SavingsWidget';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
@@ -190,7 +192,8 @@ export default function Dashboard() {
             <div style={{ fontSize: '14px', color: '#888', marginTop: '8px' }}>This month</div>
           </div>
         </div>
-
+        {/* ADD THIS NEW WIDGET */}
+        <SavingsWidget />
         {/* Charts */}
         <div className="content-grid">
           <div className="card">
@@ -341,7 +344,7 @@ export default function Dashboard() {
             className={`nav-item ${activeView === 'analytics' ? 'active' : ''}`}
             onClick={() => setActiveView('analytics')}
           >
-            📊 Analytics
+            Analytics
           </li>
         </ul>
 
@@ -529,20 +532,31 @@ function TransactionsView({ transactions, onRefresh }) {
 // Goals View Component
 function GoalsView({ onRefresh }) {
   const [goals, setGoals] = useState([]);
+  const [banks, setBanks] = useState([]);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [showAddProgress, setShowAddProgress] = useState(null);
+  const [selectedGoal, setSelectedGoal] = useState(null);
 
   useEffect(() => {
     loadGoals();
+    loadBanks();
   }, []);
 
   const loadGoals = async () => {
     try {
-      const { goalService } = require('../../services/goalService');
-      const data = await goalService.getAll();
-      setGoals(data);
+      const response = await api.get('/goals');
+      setGoals(response.data);
     } catch (error) {
       console.error('Error loading goals:', error);
+    }
+  };
+
+  const loadBanks = async () => {
+    try {
+      const response = await api.get('/banks');
+      setBanks(response.data);
+    } catch (error) {
+      console.error('Error loading banks:', error);
     }
   };
 
@@ -553,16 +567,19 @@ function GoalsView({ onRefresh }) {
       name: formData.get('name'),
       target_amount: parseFloat(formData.get('target_amount')),
       current_amount: 0,
-      deadline: formData.get('deadline') || null
+      deadline: formData.get('deadline') || null,
+      linked_bank_id: formData.get('linked_bank_id') || null,
+      auto_track: formData.get('auto_track') === 'on'
     };
 
     try {
-      const { goalService } = require('../../services/goalService');
-      await goalService.create(data);
+      await api.post('/goals', data);
       setShowAddGoal(false);
       loadGoals();
+      if (onRefresh) onRefresh();
     } catch (error) {
       console.error('Error adding goal:', error);
+      alert('Failed to create goal. Please try again.');
     }
   };
 
@@ -571,59 +588,144 @@ function GoalsView({ onRefresh }) {
     const formData = new FormData(e.target);
     const amount = parseFloat(formData.get('amount'));
 
-    const goal = goals.find(g => g._id === goalId);
-    const newAmount = goal.current_amount + amount;
-
     try {
-      const { goalService } = require('../../services/goalService');
-      await goalService.update(goalId, { current_amount: newAmount });
+      await api.post(`/goals/${goalId}/add-progress`, { amount });
       setShowAddProgress(null);
       loadGoals();
+      if (onRefresh) onRefresh();
     } catch (error) {
       console.error('Error updating progress:', error);
+      alert('Failed to update progress. Please try again.');
     }
+  };
+
+  const handleDeleteGoal = async (goalId) => {
+    if (!window.confirm('Are you sure you want to delete this goal?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/goals/${goalId}`);
+      loadGoals();
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      console.error('Error deleting goal:', error);
+      alert('Failed to delete goal. Please try again.');
+    }
+  };
+
+  const getStatusColor = (progress) => {
+    if (progress >= 100) return '#4caf50';
+    if (progress >= 75) return '#8bc34a';
+    if (progress >= 50) return '#ff9800';
+    if (progress >= 25) return '#ff5722';
+    return '#f44336';
   };
 
   return (
     <div>
       <div className="dashboard-header">
-        <h1>Savings Goals</h1>
+        <h1>💰 Savings Goals</h1>
         <button onClick={() => setShowAddGoal(true)} className="btn-add">
-          + Add Goal
+          + Create New Goal
         </button>
       </div>
 
+      {/* Summary Cards */}
+      <div className="stats-grid" style={{ marginBottom: '30px' }}>
+        <div className="stat-card">
+          <h3>Total Goals</h3>
+          <div className="stat-value">{goals.length}</div>
+        </div>
+        <div className="stat-card">
+          <h3>Goals Achieved</h3>
+          <div className="stat-value">
+            {goals.filter(g => g.progress >= 100).length}
+          </div>
+        </div>
+        <div className="stat-card">
+          <h3>Total Target</h3>
+          <div className="stat-value">
+            {formatCurrency(goals.reduce((sum, g) => sum + g.target_amount, 0))}
+          </div>
+        </div>
+        <div className="stat-card">
+          <h3>Total Saved</h3>
+          <div className="stat-value" style={{ color: '#4caf50' }}>
+            {formatCurrency(goals.reduce((sum, g) => sum + (g.current_amount || 0), 0))}
+          </div>
+        </div>
+      </div>
+
+      {/* Goals Grid */}
       <div className="goals-grid">
         {goals.map((goal) => (
-          <div key={goal._id} className="goal-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <h3>{goal.name}</h3>
-              <button
-                onClick={() => setShowAddProgress(goal._id)}
-                style={{
-                  padding: '6px 12px',
-                  background: '#667eea',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                + Add
-              </button>
+          <div key={goal._id} className="goal-card" style={{ position: 'relative' }}>
+            {/* Delete Button */}
+            <button
+              onClick={() => handleDeleteGoal(goal._id)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: '#ffebee',
+                color: '#c62828',
+                border: 'none',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title="Delete Goal"
+            >
+              🗑️
+            </button>
+
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ marginBottom: '8px', fontSize: '20px' }}>{goal.name}</h3>
+
+              {/* Progress Badge */}
+              <span style={{
+                display: 'inline-block',
+                padding: '4px 12px',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                background: goal.progress >= 100 ? '#e8f5e9' : '#fff3e0',
+                color: goal.progress >= 100 ? '#2e7d32' : '#e65100'
+              }}>
+                {goal.progress >= 100 ? '✅ Achieved!' : '🎯 In Progress'}
+              </span>
             </div>
 
+            {/* Amount Display */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'baseline' }}>
+              <div>
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Current</div>
+                <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#667eea' }}>
+                  {formatCurrency(goal.current_amount || 0)}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Target</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#888' }}>
+                  {formatCurrency(goal.target_amount)}
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
             <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#667eea' }}>
-                  {formatCurrency(goal.current_amount || 0)}
-                </span>
-                <span style={{ fontSize: '14px', color: '#888' }}>
-                  of {formatCurrency(goal.target_amount)}
+                <span style={{ fontSize: '14px', fontWeight: '500' }}>Progress</span>
+                <span style={{ fontSize: '14px', fontWeight: 'bold', color: getStatusColor(goal.progress) }}>
+                  {goal.progress.toFixed(1)}%
                 </span>
               </div>
-
               <div style={{
                 width: '100%',
                 height: '12px',
@@ -632,28 +734,84 @@ function GoalsView({ onRefresh }) {
                 overflow: 'hidden'
               }}>
                 <div style={{
-                  width: `₹{Math.min((goal.current_amount / goal.target_amount) * 100, 100)}%`,
+                  width: `${Math.min(goal.progress, 100)}%`,
                   height: '100%',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  transition: 'width 0.3s'
+                  background: `linear-gradient(90deg, ${getStatusColor(goal.progress)}, ${getStatusColor(goal.progress)}dd)`,
+                  transition: 'width 0.5s ease'
                 }}></div>
-              </div>
-
-              <div style={{ textAlign: 'right', marginTop: '4px', fontSize: '14px', color: '#888' }}>
-                {((goal.current_amount / goal.target_amount) * 100).toFixed(1)}% Complete
               </div>
             </div>
 
-            {goal.deadline && (
-              <div style={{ fontSize: '14px', color: '#888' }}>
-                Target Date: {new Date(goal.deadline).toLocaleDateString()}
+            {/* Remaining Amount */}
+            {goal.progress < 100 && (
+              <div style={{
+                padding: '8px 12px',
+                background: '#f5f5f5',
+                borderRadius: '6px',
+                marginBottom: '12px',
+                fontSize: '14px'
+              }}>
+                <span style={{ color: '#666' }}>Remaining: </span>
+                <span style={{ fontWeight: 'bold', color: '#333' }}>
+                  {formatCurrency(goal.target_amount - (goal.current_amount || 0))}
+                </span>
               </div>
             )}
 
+            {/* Deadline */}
+            {goal.deadline && (
+              <div style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>
+                📅 Deadline: {new Date(goal.deadline).toLocaleDateString('en-IN')}
+                {goal.days_remaining !== null && goal.days_remaining !== undefined && (
+                  <span style={{
+                    marginLeft: '8px',
+                    color: goal.days_remaining < 30 ? '#f44336' : '#4caf50'
+                  }}>
+                    ({goal.days_remaining} days left)
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Linked Bank */}
+            {goal.linked_bank && (
+              <div style={{
+                fontSize: '12px',
+                color: '#667eea',
+                marginBottom: '12px',
+                padding: '6px 10px',
+                background: '#f0f4ff',
+                borderRadius: '4px'
+              }}>
+                🏦 Linked to {goal.linked_bank.bank_name} (****{goal.linked_bank.account_number.slice(-4)})
+              </div>
+            )}
+
+            {/* Action Button */}
+            {goal.progress < 100 && (
+              <button
+                onClick={() => setShowAddProgress(goal._id)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '14px'
+                }}
+              >
+                💰 Add Progress
+              </button>
+            )}
+
+            {/* Add Progress Modal */}
             {showAddProgress === goal._id && (
               <div className="modal-overlay">
                 <div className="modal-content">
-                  <h2>Add Progress to {goal.name}</h2>
+                  <h2>Add Progress to "{goal.name}"</h2>
                   <form onSubmit={(e) => handleAddProgress(e, goal._id)}>
                     <div className="form-group">
                       <label>Amount to Add</label>
@@ -661,9 +819,15 @@ function GoalsView({ onRefresh }) {
                         type="number"
                         name="amount"
                         step="0.01"
+                        min="0.01"
                         required
                         placeholder="Enter amount"
+                        autoFocus
                       />
+                      <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                        Current: {formatCurrency(goal.current_amount || 0)} |
+                        Remaining: {formatCurrency(goal.target_amount - (goal.current_amount || 0))}
+                      </div>
                     </div>
                     <div className="form-actions">
                       <button type="submit" className="btn-primary" style={{ flex: 1 }}>
@@ -685,39 +849,63 @@ function GoalsView({ onRefresh }) {
         ))}
 
         {goals.length === 0 && (
-          <div className="no-data" style={{ gridColumn: '1 / -1' }}>
-            No goals yet. Create your first savings goal!
+          <div className="no-data" style={{ gridColumn: '1 / -1', padding: '60px 20px' }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>🎯</div>
+            <h3>No Savings Goals Yet</h3>
+            <p style={{ color: '#666', marginTop: '10px' }}>
+              Create your first goal and start saving towards your dreams!
+            </p>
           </div>
         )}
       </div>
 
+      {/* Add Goal Modal */}
       {showAddGoal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h2>Create New Goal</h2>
+            <h2>Create New Savings Goal</h2>
             <form onSubmit={handleAddGoal}>
               <div className="form-group">
-                <label>Goal Name</label>
+                <label>Goal Name *</label>
                 <input
                   type="text"
                   name="name"
                   required
-                  placeholder="e.g., Emergency Fund, Vacation"
+                  placeholder="e.g., Emergency Fund, Vacation, New Laptop"
                 />
               </div>
               <div className="form-group">
-                <label>Target Amount</label>
+                <label>Target Amount (₹) *</label>
                 <input
                   type="number"
                   name="target_amount"
                   step="0.01"
+                  min="1"
                   required
                   placeholder="10000"
                 />
               </div>
               <div className="form-group">
-                <label>Target Date (Optional)</label>
-                <input type="date" name="deadline" />
+                <label>Target Deadline (Optional)</label>
+                <input
+                  type="date"
+                  name="deadline"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div className="form-group">
+                <label>Link to Bank Account (Optional)</label>
+                <select name="linked_bank_id">
+                  <option value="">-- No Bank Link --</option>
+                  {banks.map(bank => (
+                    <option key={bank._id} value={bank._id}>
+                      {bank.bank_name} - {bank.account_number}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                  Link to track progress with your bank balance
+                </div>
               </div>
               <div className="form-actions">
                 <button type="submit" className="btn-primary" style={{ flex: 1 }}>
