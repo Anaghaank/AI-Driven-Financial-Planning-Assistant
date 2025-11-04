@@ -16,7 +16,7 @@ def create_app():
     init_db(app)
     
     # Register blueprints
-    from .routes import auth_routes, transaction_routes, ai_routes, budget_routes, goal_routes, bank_routes, analytics_routes
+    from .routes import auth_routes, transaction_routes, ai_routes, budget_routes, goal_routes, bank_routes, analytics_routes, search_routes
     from .routes import export_routes
     
     app.register_blueprint(export_routes.bp, url_prefix='/api/export')
@@ -27,6 +27,7 @@ def create_app():
     app.register_blueprint(budget_routes.bp, url_prefix='/api/budgets')
     app.register_blueprint(goal_routes.bp, url_prefix='/api/goals')
     app.register_blueprint(bank_routes.bp, url_prefix='/api/banks')
+    app.register_blueprint(search_routes.search_bp, url_prefix='/api/search')
     
     @app.route('/api/health')
     def health():

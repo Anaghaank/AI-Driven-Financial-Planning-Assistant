@@ -19,6 +19,11 @@ export default function Dashboard() {
   const [aiQuery, setAiQuery] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [activeView, setActiveView] = useState('dashboard');
+  const [darkMode, setDarkMode] = useState(() => {
+    // Load saved theme from localStorage
+    return localStorage.getItem('theme') === 'dark';
+  });
+
   const [categoryData, setCategoryData] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
   const navigate = useNavigate();
@@ -28,6 +33,10 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
   }, []);
+  useEffect(() => {
+    document.body.classList.toggle('dark-mode', darkMode);
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   const loadData = async () => {
     try {
@@ -213,26 +222,73 @@ export default function Dashboard() {
 
           <div className="card">
             <h2>Spending by Category</h2>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
                   data={categoryData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(entry) => `${entry.name}: ₹${entry.value}`}
-                  outerRadius={80}
-                  fill="#8884d8"
+                  label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, name, value }) => {
+                    const RADIAN = Math.PI / 180;
+                    const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+                    if (percent < 0.08) return null; // skip small slices
+
+                    return (
+                      <text
+                        
+                        fill={darkMode ? "#f3f4f6" : "#111827"} // 👈 dynamic color
+                        textAnchor={x > cx ? "start" : "end"}
+                        dominantBaseline="central"
+                        fontSize={12}
+                        fontWeight={500}
+                      >
+                        {`${name}: ₹${value}`}
+                      </text>
+                    );
+                  }}
+                  outerRadius={90}
+                  innerRadius={45}
                   dataKey="value"
+                  stroke={darkMode ? "#111827" : "#fff"}
+                  strokeWidth={2}
                 >
                   {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                      style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.15))" }}
+                    />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{
+                    background: darkMode ? "#2a2a44" : "#f9fafb",
+                    borderRadius: "8px",
+                    border: "1px solid #ddd",
+                    color: darkMode ? "#fff" : "#111827",
+                  }}
+                  formatter={(value, name) => [`₹${value}`, name]}
+                />
+                <Legend
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  align="center"
+                  iconType="circle"
+                  wrapperStyle={{
+                    fontSize: 12,
+                    marginTop: 10,
+                    color: darkMode ? "#ddd" : "#444",
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
+
+
         </div>
 
         <div className="content-grid">
@@ -309,49 +365,243 @@ export default function Dashboard() {
   return (
     <div className="dashboard-container">
       {/* Sidebar */}
-      <div className="sidebar">
-        <div className="sidebar-header">
-          <div className="logo">F</div>
-          <span style={{ fontWeight: 'bold', fontSize: '20px' }}>FinSet</span>
+      <div
+        className="sidebar"
+        style={{
+          width: 260,
+          background: darkMode ? "#1b1b2f" : "#ffffff",
+          color: darkMode ? "#f3f4f6" : "#1f2937",
+          display: "flex",
+          flexDirection: "column",
+          height: "100vh",
+          justifyContent: "space-between",
+          padding: "24px 20px",
+          borderRight: darkMode ? "1px solid #2a2a44" : "1px solid #e5e7eb",
+          boxShadow: darkMode
+            ? "inset -1px 0 0 rgba(255,255,255,0.05)"
+            : "inset -1px 0 0 rgba(0,0,0,0.05)",
+          transition: "all 0.3s ease",
+        }}
+      >
+        {/* --- Top Section --- */}
+        <div style={{ overflowY: "auto", flexGrow: 1 }}>
+          {/* Header */}
+          <div
+            className="sidebar-header"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 40,
+            }}
+          >
+            <div
+              className="logo"
+              style={{
+                width: 44,
+                height: 44,
+                background: "linear-gradient(135deg, #667eea, #764ba2)",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                fontWeight: "bold",
+                fontSize: 20,
+                boxShadow: "0 3px 6px rgba(118, 75, 162, 0.3)",
+              }}
+            >
+              F
+            </div>
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: 22,
+                letterSpacing: "0.5px",
+                color: darkMode ? "#e5e7eb" : "#1f2937",
+              }}
+            >
+              FinSet
+            </span>
+          </div>
+
+          {/* Navigation */}
+          <ul className="sidebar-nav" style={{ listStyle: "none", padding: 0 }}>
+            {[
+              { id: "dashboard", label: "Dashboard", icon: "📊" },
+              { id: "transactions", label: "Transactions", icon: "💰" },
+              { id: "goals", label: "Goals", icon: "🎯" },
+              { id: "banks", label: "Banks", icon: "🏦" },
+              { id: "analytics", label: "Analytics", icon: "📈" },
+            ].map((item) => (
+              <li
+                key={item.id}
+                className={`nav-item ${activeView === item.id ? "active" : ""}`}
+                onClick={() => setActiveView(item.id)}
+                style={{
+                  padding: "12px 16px",
+                  marginBottom: 8,
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background:
+                    activeView === item.id
+                      ? "linear-gradient(135deg, #667eea, #764ba2)"
+                      : darkMode
+                        ? "#23233b"
+                        : "#f9fafb",
+                  color:
+                    activeView === item.id
+                      ? "#ffffff"
+                      : darkMode
+                        ? "#d1d5db"
+                        : "#374151",
+                  fontWeight: 500,
+                  transition: "all 0.25s ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (activeView !== item.id)
+                    e.currentTarget.style.background = darkMode
+                      ? "#2a2a44"
+                      : "#f3f4f6";
+                }}
+                onMouseLeave={(e) => {
+                  if (activeView !== item.id)
+                    e.currentTarget.style.background = darkMode
+                      ? "#23233b"
+                      : "#f9fafb";
+                }}
+              >
+                <span style={{ fontSize: 18 }}>{item.icon}</span>
+                {item.label}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        <ul className="sidebar-nav">
-          <li
-            className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveView('dashboard')}
+        {/* --- Bottom Section (Theme Toggle + Logout) --- */}
+        {/* --- Bottom Section (Theme Toggle + Logout) --- */}
+        {/* --- Bottom Section --- */}
+        <div
+          style={{
+            marginTop: "auto",
+            padding: "20px 14px",
+            borderTop: darkMode ? "1px solid #2a2a44" : "1px solid #eee",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "stretch",
+            gap: "18px",
+            position: "sticky",
+            bottom: 0,
+            background: darkMode ? "#1e1e2f" : "#fff",
+            zIndex: 10,
+          }}
+        >
+          {/* Theme Toggle */}
+          <div
+            onClick={() => setDarkMode(!darkMode)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: darkMode ? "#2a2a44" : "#f9fafb",
+              borderRadius: "12px",
+              padding: "10px 14px",
+              cursor: "pointer",
+              boxShadow: darkMode
+                ? "inset 0 0 5px rgba(0,0,0,0.6)"
+                : "0 1px 3px rgba(0,0,0,0.08)",
+              transition: "all 0.3s ease",
+            }}
           >
-            Dashboard
-          </li>
-          <li
-            className={`nav-item ${activeView === 'transactions' ? 'active' : ''}`}
-            onClick={() => setActiveView('transactions')}
-          >
-            Transactions
-          </li>
-          <li
-            className={`nav-item ${activeView === 'goals' ? 'active' : ''}`}
-            onClick={() => setActiveView('goals')}
-          >
-            Goals
-          </li>
-          <li
-            className={`nav-item ${activeView === 'banks' ? 'active' : ''}`}
-            onClick={() => setActiveView('banks')}
-          >
-            Banks
-          </li>
-          <li
-            className={`nav-item ${activeView === 'analytics' ? 'active' : ''}`}
-            onClick={() => setActiveView('analytics')}
-          >
-            Analytics
-          </li>
-        </ul>
+            <div
+              style={{
+                position: "relative",
+                width: "48px",
+                height: "24px",
+                borderRadius: "999px",
+                background: darkMode ? "#374151" : "#e5e7eb",
+                boxShadow: darkMode
+                  ? "inset 0 0 6px rgba(0,0,0,0.6)"
+                  : "inset 0 0 4px rgba(0,0,0,0.2)",
+                transition: "background 0.3s ease",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: "2px",
+                  left: darkMode ? "25px" : "2px",
+                  width: "20px",
+                  height: "20px",
+                  background: darkMode
+                    ? "linear-gradient(145deg, #6366f1, #4338ca)"
+                    : "linear-gradient(145deg, #facc15, #fbbf24)",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "12px",
+                  boxShadow: darkMode
+                    ? "0 0 6px rgba(99,102,241,0.6)"
+                    : "0 0 6px rgba(250,204,21,0.5)",
+                  transition: "all 0.3s ease",
+                }}
+              >
+                {darkMode ? "🌙" : "☀️"}
+              </div>
+            </div>
+            <span
+              style={{
+                fontSize: "13px",
+                fontWeight: 600,
+                color: darkMode ? "#e5e7eb" : "#374151",
+                userSelect: "none",
+              }}
+            >
+              {darkMode ? "Dark Mode" : "Light Mode"}
+            </span>
+          </div>
 
-        <button onClick={handleLogout} className="logout-btn">
-          Logout
-        </button>
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              padding: "10px 0",
+              borderRadius: "12px",
+              border: "none",
+              background: darkMode ? "#2a2a44" : "#f3f4f6",
+              color: darkMode ? "#f9fafb" : "#374151",
+              fontWeight: 600,
+              fontSize: "14px",
+              cursor: "pointer",
+              boxShadow: darkMode
+                ? "inset 0 0 4px rgba(0,0,0,0.4)"
+                : "0 1px 3px rgba(0,0,0,0.08)",
+              transition: "all 0.25s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = darkMode ? "#3a3a5c" : "#e5e7eb";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = darkMode ? "#2a2a44" : "#f3f4f6";
+            }}
+          >
+            <span style={{ fontSize: "16px" }}>🚪</span>
+            Logout
+          </button>
+        </div>
+
+
       </div>
+
+
 
       {/* Main Content */}
       <div className="main-content">
@@ -412,122 +662,309 @@ export default function Dashboard() {
 }
 
 // Transactions View Component
-function TransactionsView({ transactions, onRefresh }) {
-  const [filter, setFilter] = useState('all');
+// Replace your existing TransactionsView with this component
+function TransactionsView({ transactions = [], onRefresh }) {
+  const [keyword, setKeyword] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [quick, setQuick] = useState("");
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 20;
 
-  const filteredTransactions = transactions.filter(t => {
-    if (filter === 'all') return true;
-    return t.type === filter;
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.body.classList.contains("dark-mode"));
+    });
+    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    setIsDark(document.body.classList.contains("dark-mode"));
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!quick) return;
+    const today = new Date();
+    let s = "", e = today.toISOString().split("T")[0];
+    if (quick === "today") s = e;
+    else if (quick === "this_week") {
+      const wkStart = new Date(today);
+      wkStart.setDate(today.getDate() - today.getDay());
+      s = wkStart.toISOString().split("T")[0];
+    } else if (quick === "this_month") {
+      s = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
+    } else if (quick === "last_30_days") {
+      const d = new Date(today);
+      d.setDate(today.getDate() - 30);
+      s = d.toISOString().split("T")[0];
+    }
+    setStartDate(s);
+    setEndDate(e);
+    setPage(1);
+  }, [quick]);
+
+  const filtered = transactions.filter((t) => {
+    const q = keyword.toLowerCase();
+    if (q && !((t.description || "").toLowerCase().includes(q) || (t.category || "").toLowerCase().includes(q))) return false;
+    if (typeFilter !== "all" && t.type !== typeFilter) return false;
+    if (categoryFilter && t.category !== categoryFilter) return false;
+    if (minAmount && t.amount < parseFloat(minAmount)) return false;
+    if (maxAmount && t.amount > parseFloat(maxAmount)) return false;
+    if (startDate && new Date(t.date) < new Date(startDate)) return false;
+    if (endDate && new Date(t.date) > new Date(endDate)) return false;
+    return true;
   });
 
-  const handleExport = async (format) => {
-    try {
-      const response = await api.get(`/export/transactions/${format}`, {
-        responseType: 'blob'
-      });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const pageItems = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `transactions_${new Date().toISOString().split('T')[0]}.${format}`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('Export failed. Please try again.');
+  const summary = filtered.reduce(
+    (acc, t) => {
+      if (t.type === "income") acc.income += t.amount;
+      else acc.expense += t.amount;
+      acc.count += 1;
+      return acc;
+    },
+    { income: 0, expense: 0, count: 0 }
+  );
+
+  const net = summary.income - summary.expense;
+  const categories = Array.from(new Set(transactions.map((t) => t.category).filter(Boolean)));
+
+  const aiMessage = (() => {
+    if (filtered.length === 0)
+      return "No transactions found for the selected filters. Try changing your search or date range.";
+
+    const categoryTotals = {};
+    filtered.forEach((txn) => {
+      if (txn.type === "expense") {
+        categoryTotals[txn.category] = (categoryTotals[txn.category] || 0) + txn.amount;
+      }
+    });
+
+    const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
+    const savingsRate = summary.income ? ((net / summary.income) * 100).toFixed(1) : 0;
+
+    if (net > 0 && savingsRate >= 30) {
+      return `Excellent! You saved ${savingsRate}% of your income this period. Your top spending area was ${topCategory ? topCategory[0] : "miscellaneous"
+        } — great control overall.`;
+    } else if (net > 0 && savingsRate < 30) {
+      return `You're saving ₹${net.toLocaleString()}, but your savings rate is only ${savingsRate}%. Consider reducing ${topCategory ? topCategory[0].toLowerCase() : "discretionary"
+        } expenses for better balance.`;
+    } else if (net < 0) {
+      return `Your expenses exceeded income by ₹${Math.abs(net).toLocaleString()}. Most spending was in ${topCategory ? topCategory[0] : "general"
+        } — let's review this category to optimize.`;
+    } else {
+      return `You're breaking even this period. Try setting aside at least 10% for savings to build stability.`;
     }
-  };
+  })();
+
+  // 🎨 Theme colors
+  const bg = isDark ? "#111827" : "#f9fafb";
+  const card = isDark ? "#1f2937" : "#fff";
+  const text = isDark ? "#f3f4f6" : "#111827";
+  const subtext = isDark ? "#9ca3af" : "#444";
+  const border = isDark ? "#374151" : "#e5e7eb";
 
   return (
-    <div>
-      <div className="dashboard-header">
-        <h1>Transactions</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            className={filter === 'all' ? 'btn-add' : 'btn-secondary'}
-            onClick={() => setFilter('all')}
-          >
-            All
-          </button>
-          <button
-            className={filter === 'income' ? 'btn-add' : 'btn-secondary'}
-            onClick={() => setFilter('income')}
-          >
-            Income
-          </button>
-          <button
-            className={filter === 'expense' ? 'btn-add' : 'btn-secondary'}
-            onClick={() => setFilter('expense')}
-          >
-            Expense
-          </button>
-          <button
-            className="btn-secondary"
-            onClick={() => handleExport('csv')}
-          >
-            📄 Export CSV
-          </button>
-          <button
-            className="btn-secondary"
-            onClick={() => handleExport('excel')}
-          >
-            📊 Export Excel
-          </button>
+    <div style={{ padding: 0, color: text, background: bg, minHeight: "100vh", transition: "all 0.3s ease" }}>
+      <h1 style={{ marginBottom: 8 }}>Transactions</h1>
+
+      {/* AI Card */}
+      <div
+        style={{
+          background: isDark ? "#1e3a8a" : "linear-gradient(90deg, #eef2ff, #f5f3ff)",
+          padding: 16,
+          borderRadius: 12,
+          marginBottom: 16,
+          marginTop: 16,
+          boxShadow: isDark ? "0 0 8px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.05)",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            background: "#4f46e5",
+            color: "#fff",
+            borderRadius: "50%",
+            width: 42,
+            height: 42,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 600,
+          }}
+        >
+          AI
+        </div>
+        <div>
+          <div style={{ fontWeight: 600, color: isDark ? "#fff" : "#111827" }}>AI Financial Assistant</div>
+          <div style={{ color: subtext, marginTop: 4, fontSize: 14 }}>{aiMessage}</div>
         </div>
       </div>
 
-      <div className="card">
-        <div className="transactions-table">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
-                <th style={{ textAlign: 'left', padding: '12px' }}>Date</th>
-                <th style={{ textAlign: 'left', padding: '12px' }}>Description</th>
-                <th style={{ textAlign: 'left', padding: '12px' }}>Category</th>
-                <th style={{ textAlign: 'left', padding: '12px' }}>Type</th>
-                <th style={{ textAlign: 'right', padding: '12px' }}>Amount</th>
+      {/* Filters */}
+      <div
+        style={{
+          background: card,
+          color: text,
+          padding: 14,
+          borderRadius: 10,
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          flexWrap: "wrap",
+          boxShadow: isDark ? "0 0 6px rgba(0,0,0,0.5)" : "0 1px 2px rgba(0,0,0,0.05)",
+        }}
+      >
+        <input
+          type="text"
+          placeholder="🔍 Search transactions..."
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          style={{
+            flex: 1,
+            padding: "10px 12px",
+            border: `1px solid ${border}`,
+            borderRadius: 8,
+            fontSize: 14,
+            minWidth: 220,
+            background: isDark ? "#111827" : "#fff",
+            color: text,
+          }}
+        />
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: `1px solid ${border}`,
+            background: isDark ? "#111827" : "#fff",
+            color: text,
+          }}
+        >
+          <option value="all">All Types</option>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: `1px solid ${border}`,
+            background: isDark ? "#111827" : "#fff",
+            color: text,
+          }}
+        >
+          <option value="">All Categories</option>
+          {categories.map((cat) => (
+            <option key={cat}>{cat}</option>
+          ))}
+        </select>
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: `1px solid ${border}`,
+            background: isDark ? "#111827" : "#fff",
+            color: text,
+          }}
+        />
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: `1px solid ${border}`,
+            background: isDark ? "#111827" : "#fff",
+            color: text,
+          }}
+        />
+        <button
+          onClick={() => {
+            setKeyword("");
+            setTypeFilter("all");
+            setCategoryFilter("");
+            setMinAmount("");
+            setMaxAmount("");
+            setStartDate("");
+            setEndDate("");
+            setQuick("");
+          }}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: `1px solid ${border}`,
+            background: isDark ? "#8898aeff" : "#f9fafb",
+            color: text,
+            cursor: "pointer",
+          }}
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* Table */}
+      <div
+        style={{
+          marginTop: 20,
+          background: card,
+          borderRadius: 10,
+          overflow: "hidden",
+          boxShadow: isDark ? "0 0 8px rgba(0,0,0,0.6)" : "0 1px 3px rgba(0,0,0,0.05)",
+        }}
+      >
+        <table style={{ width: "100%", borderCollapse: "collapse", color: text }}>
+          <thead>
+            <tr style={{ background: isDark ? "#839ab8ff" : "#f9fafb" }}>
+              <th style={{ textAlign: "left", padding: 10 }}>Date</th>
+              <th style={{ textAlign: "left", padding: 10 }}>Description</th>
+              <th style={{ textAlign: "left", padding: 10 }}>Category</th>
+              <th style={{ textAlign: "left", padding: 10 }}>Type</th>
+              <th style={{ textAlign: "right", padding: 10 }}>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.map((t, i) => (
+              <tr key={t._id || i} style={{ borderTop: `1px solid ${border}` }}>
+                <td style={{ padding: 10 }}>{new Date(t.date).toLocaleDateString()}</td>
+                <td style={{ padding: 10 }}>{t.description}</td>
+                <td style={{ padding: 10 }}>{t.category}</td>
+                <td style={{ padding: 10, color: t.type === "income" ? "#16a34a" : "#dc2626", fontWeight: 600 }}>{t.type}</td>
+                <td
+                  style={{
+                    padding: 10,
+                    textAlign: "right",
+                    color: t.type === "income" ? "#16a34a" : "#dc2626",
+                    fontWeight: 700,
+                  }}
+                >
+                  {t.type === "income" ? "+" : "-"}₹{t.amount.toLocaleString()}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filteredTransactions.map((txn, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                  <td style={{ padding: '12px' }}>
-                    {new Date(txn.date).toLocaleDateString()}
-                  </td>
-                  <td style={{ padding: '12px' }}>{txn.description || '-'}</td>
-                  <td style={{ padding: '12px' }}>{txn.category}</td>
-                  <td style={{ padding: '12px' }}>
-                    <span style={{
-                      padding: '4px 12px',
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      background: txn.type === 'income' ? '#e8f5e9' : '#ffebee',
-                      color: txn.type === 'income' ? '#2e7d32' : '#c62828'
-                    }}>
-                      {txn.type}
-                    </span>
-                  </td>
-                  <td style={{
-                    padding: '12px',
-                    textAlign: 'right',
-                    fontWeight: 'bold',
-                    color: txn.type === 'income' ? '#4caf50' : '#f44336'
-                  }}>
-                    {txn.type === 'income' ? '+' : '-'}{formatCurrency(txn.amount)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredTransactions.length === 0 && (
-            <div className="no-data">No transactions found</div>
-          )}
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
+
+
+
 
 // Goals View Component
 function GoalsView({ onRefresh }) {

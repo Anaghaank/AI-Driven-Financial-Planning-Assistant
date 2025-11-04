@@ -445,3 +445,197 @@ body {
     margin-left: 200px;
   }
 }
+/* 🌙 --- DARK MODE (AI Financial Assistant Style) --- */
+body.dark-mode {
+  background-color: #0f0f17;
+  color: #e5e7eb;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Sidebar */
+body.dark-mode .sidebar {
+  background-color: #171721;
+  color: #e2e2e2;
+  border-right: 1px solid #2c2c3a;
+  box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .sidebar-header .logo {
+  background: linear-gradient(135deg, #6b72ff, #a46bff);
+}
+
+body.dark-mode .sidebar .nav-item {
+  color: #b5b6bf;
+  font-weight: 500;
+}
+
+body.dark-mode .sidebar .nav-item:hover {
+  background: #23233a;
+  color: #fff;
+}
+
+body.dark-mode .sidebar .nav-item.active {
+  background: linear-gradient(135deg, #7b83ff, #b180ff);
+  color: #0d0d14;
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(123, 131, 255, 0.4);
+}
+
+/* Main Dashboard Layout */
+body.dark-mode .main-content {
+  background-color: #0f0f17;
+}
+
+body.dark-mode .dashboard-header h1 {
+  color: #ffffff;
+}
+
+/* Cards */
+body.dark-mode .card,
+body.dark-mode .stat-card,
+body.dark-mode .goal-card {
+  background: linear-gradient(160deg, #1a1a2d, #18182a);
+  color: #e5e7eb;
+  border: 1px solid #2a2a3e;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+}
+
+body.dark-mode .card h2 {
+  color: #f1f1f8;
+}
+
+/* Stat Titles and Numbers */
+body.dark-mode .stat-card h3 {
+  color: #9ca3af;
+  letter-spacing: 0.5px;
+}
+
+body.dark-mode .stat-value {
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Buttons */
+body.dark-mode .btn-primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border: none;
+  box-shadow: 0 0 12px rgba(118, 75, 162, 0.3);
+}
+
+body.dark-mode .btn-primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 16px rgba(118, 75, 162, 0.5);
+}
+
+body.dark-mode .btn-secondary {
+  background-color: #24243a;
+  color: #ddd;
+  border: 1px solid #383852;
+}
+
+body.dark-mode .btn-secondary:hover {
+  background-color: #32324c;
+}
+
+/* Inputs, Selects, Textareas */
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+  background-color: #202036;
+  color: #fff;
+  border: 1px solid #3a3a55;
+  border-radius: 6px;
+}
+
+body.dark-mode input:focus,
+body.dark-mode textarea:focus,
+body.dark-mode select:focus {
+  outline: none;
+  border-color: #7a74ff;
+  box-shadow: 0 0 6px rgba(122, 116, 255, 0.3);
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+  color: #7e7e9e;
+}
+
+/* Tables and Transactions */
+body.dark-mode .transaction-item {
+  border-bottom: 1px solid #2a2a44;
+}
+
+body.dark-mode .transactions-table {
+  background-color: #18182a;
+  border-radius: 10px;
+}
+
+body.dark-mode .transactions-table th {
+  color: #b3b3c3;
+  background: #202036;
+  border-bottom: 1px solid #2f2f47;
+}
+
+body.dark-mode .transactions-table tbody tr {
+  transition: background 0.2s;
+}
+
+body.dark-mode .transactions-table tbody tr:hover {
+  background: #25253a;
+}
+
+/* AI Assistant Section */
+body.dark-mode .ai-assistant {
+  background: #161628;
+  border: 1px solid #2a2a44;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .ai-assistant textarea {
+  background-color: #1e1e33;
+  border: 1px solid #3a3a54;
+  color: #fff;
+}
+
+body.dark-mode .ai-response {
+  background: linear-gradient(135deg, #1a1a2f, #1f1f38);
+  border: 1px solid #2a2a44;
+  color: #e2e2ee;
+}
+
+/* Modal */
+body.dark-mode .modal-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+body.dark-mode .modal-content {
+  background: linear-gradient(160deg, #1a1a2d, #18182a);
+  color: #fff;
+  border: 1px solid #3a3a54;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+}
+
+/* Goal Progress Bars */
+body.dark-mode .goal-card .progress-bar-bg {
+  background: #2e2e44 !important;
+}
+
+/* No Data */
+body.dark-mode .no-data {
+  color: #aaa;
+  font-style: italic;
+}
+body.dark-mode .insight-box {
+  background: #755aaa;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+/* Smooth Transitions for everything */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
