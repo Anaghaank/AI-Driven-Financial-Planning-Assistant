@@ -61,6 +61,8 @@ def upload_statement():
         filepath = os.path.join(UPLOAD_FOLDER, f"{current_user}_{filename}")
         file.save(filepath)
         
+        print(f"📁 Saved file to: {filepath}")
+        
         # Extract data from PDF
         extractor = StatementExtractor()
         result = extractor.extract_from_pdf(filepath)
@@ -82,35 +84,66 @@ def upload_statement():
         bank_info = result['bank_info']
         transactions = result['transactions']
         
+        print(f"✅ Extracted {len(transactions)} transactions")
+        print(f"🏦 Bank: {bank_info.get('bank_name')}")
+        print(f"💰 Opening Balance: {bank_info.get('opening_balance')}")
+        print(f"💰 Closing Balance: {bank_info.get('closing_balance')}")
+        
         # Find or create bank account
         bank = None
-        if bank_info['account_number']:
-            bank = Bank.find_by_account(current_user, bank_info['account_number'])
+        account_to_match = bank_info.get('full_account_number') or bank_info.get('account_number')
+        
+        if account_to_match:
+            bank = Bank.find_by_account(current_user, account_to_match)
         
         if not bank and bank_info['bank_name']:
             # Create new bank account
             bank = Bank.create(current_user, {
                 'bank_name': bank_info['bank_name'],
-                'account_number': bank_info['account_number'] or 'Unknown',
-                'account_type': 'Checking',
-                'balance': 0
+                'account_number': bank_info.get('account_number', 'Unknown'),
+                'account_type': 'Savings',
+                'balance': bank_info.get('closing_balance', 0),
+                'is_active': True
             })
+            print(f"✨ Created new bank account: {bank.get('_id')}")
+        elif bank:
+            # Update existing bank balance
+            Bank.update_balance(str(bank['_id']), bank_info.get('closing_balance', bank.get('balance', 0)))
+            print(f"🔄 Updated bank balance")
         
         # Add transactions
         added_count = 0
+        skipped_count = 0
+        
         for txn in transactions:
             try:
+                # Check if transaction already exists to avoid duplicates
+                existing_txn = Transaction.find_duplicate(
+                    current_user,
+                    txn['date'],
+                    txn['amount'],
+                    txn['description'][:50]
+                )
+                
+                if existing_txn:
+                    skipped_count += 1
+                    continue
+                
                 Transaction.create(current_user, txn)
                 added_count += 1
             except Exception as e:
-                print(f"Error adding transaction: {e}")
+                print(f"⚠️ Error adding transaction: {e}")
+                skipped_count += 1
+        
+        print(f"✅ Added {added_count} new transactions")
+        print(f"⏭️ Skipped {skipped_count} duplicate transactions")
         
         # Record statement upload
         StatementUpload.create(current_user, {
-            'bank_id': bank['_id'] if bank else None,
+            'bank_id': str(bank['_id']) if bank else None,
             'filename': filename,
             'file_hash': result['file_hash'],
-            'statement_date': bank_info['statement_date'],
+            'statement_date': bank_info.get('statement_date'),
             'transactions_count': added_count
         })
         
@@ -119,8 +152,16 @@ def upload_statement():
         
         return jsonify({
             'message': 'Statement processed successfully',
-            'bank_info': bank_info,
+            'bank_info': {
+                'bank_name': bank_info.get('bank_name'),
+                'account_number': bank_info.get('account_number'),
+                'customer_name': bank_info.get('customer_name'),
+                'opening_balance': bank_info.get('opening_balance'),
+                'closing_balance': bank_info.get('closing_balance'),
+            },
             'transactions_added': added_count,
+            'transactions_skipped': skipped_count,
+            'total_extracted': len(transactions),
             'duplicate': False
         }), 200
         
